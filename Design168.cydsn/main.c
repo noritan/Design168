@@ -11,14 +11,25 @@
 */
 #include <project.h>
 
-int main()
-{
-    /* Place your initialization/startup code here (e.g. MyInst_Start()) */
+int main(void) {
+    CyGlobalIntEnable; // Enable interrupt
 
-    /* CyGlobalIntEnable; */ /* Uncomment this line to enable global interrupts. */
-    for(;;)
-    {
-        /* Place your application code here. */
+    USBUART_Start(0, USBUART_5V_OPERATION); // Initialize USB
+
+    for (;;) {
+        // Wait for USB configuration
+        while (USBUART_GetConfiguration() == 0);
+        
+        USBUART_IsConfigurationChanged(); // Ensure the CHANGE flag cleared
+        
+        USBUART_CDC_Init(); // Initialize as CDC device
+
+        for (;;) {
+            // Re-initialize when configuration changed
+            if (USBUART_IsConfigurationChanged()) {
+                break;
+            }
+        }
     }
 }
 
