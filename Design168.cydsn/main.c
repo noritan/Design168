@@ -11,6 +11,10 @@
 */
 #include <project.h>
 
+uint8   rx8Buf[9]; // Data packet to be sent
+uint16  x1; // The first data
+uint16  x2; // The second data
+
 int main(void) {
     CyGlobalIntEnable; // Enable interrupt
 
@@ -25,11 +29,31 @@ int main(void) {
         USBUART_CDC_Init(); // Initialize as CDC device
 
         for (;;) {
+            // Prepare a data packet
+            rx8Buf[0]  = 0x0D;
+            rx8Buf[1]  = 0x0A;
+            rx8Buf[2]  = HI8(x1);
+            rx8Buf[3]  = LO8(x1);
+            rx8Buf[4]  = HI8(x2);
+            rx8Buf[5]  = LO8(x2);
+            rx8Buf[6]  = 0x00;
+            rx8Buf[7]  = 0xFF;
+            rx8Buf[8]  = 0xFF;
+            
             // Re-initialize when configuration changed
             if (USBUART_IsConfigurationChanged()) {
-                break;
+                goto reconfigure;
             }
+
+            // Send data to host
+            while (!USBUART_CDCIsReady()) {
+                if (USBUART_IsConfigurationChanged()) {
+                    goto reconfigure;
+                }
+            }
+            USBUART_PutData(rx8Buf, sizeof(rx8Buf));
         }
+        reconfigure: ;
     }
 }
 
