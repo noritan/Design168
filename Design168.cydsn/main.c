@@ -11,30 +11,21 @@
 */
 #include <project.h>
 
-#define     TABLE_LENGTH        (64)
-
 uint8   rx8Buf[9]; // Data packet to be sent
 uint16  x1; // The first data
 uint16  x2; // The second data
 
-static const uint16 sine[TABLE_LENGTH] = {
-32768,	34373,	35963,	37523,	39037,	40490,	41869,	43160,
-44351,	45431,	46389,	47215,	47902,	48444,	48835,	49071,
-49150,	49071,	48835,	48444,	47902,	47215,	46389,	45431,
-44351,	43160,	41869,	40490,	39037,	37523,	35963,	34373,
-32768,	31162,	29572,	28012,	26498,	25045,	23666,	22375,
-21184,	20104,	19146,	18320,	17633,	17091,	16700,	16464,
-16386,	16464,	16700,	17091,	17633,	18320,	19146,	20104,
-21184,	22375,	23666,	25045,	26498,	28012,	29572,	31162,
-};
-
 int main(void) {
-    uint32      index1;
-    uint32      index2;
-    
     CyGlobalIntEnable; // Enable interrupt
 
     USBUART_Start(0, USBUART_5V_OPERATION); // Initialize USB
+    
+    // Initialize DAC
+    WaveDAC8_Start();
+    
+    // Initialize ADC
+    AMux_Start();
+    ADC_Start();
 
     for (;;) {
         // Wait for USB configuration
@@ -44,17 +35,22 @@ int main(void) {
         
         USBUART_CDC_Init(); // Initialize as CDC device
 
-        // Initialize index
-        index1 = 0;  // 0 degree
-        index2 = TABLE_LENGTH / 4; // 90 degree
+        // Initialize AMux
+        AMux_Init();
         
         for (;;) {
-            // Get data
-            x1 = sine[index1];
-            x2 = sine[index2];
-            index1 = (index1 + 1) % TABLE_LENGTH;
-            index2 = (index2 + 1) % TABLE_LENGTH;
+            // Get ADC value from CH1
+            AMux_Next();
+            ADC_StartConvert();
+            while (!ADC_IsEndConversion(ADC_WAIT_FOR_RESULT)) ;
+            x1 = ADC_GetResult16();
             
+            // Get ADC value from CH2
+            AMux_Next();
+            ADC_StartConvert();
+            while (!ADC_IsEndConversion(ADC_WAIT_FOR_RESULT)) ;
+            x2 = ADC_GetResult16();
+                        
             // Prepare a data packet
             rx8Buf[0]  = 0x0D;
             rx8Buf[1]  = 0x0A;
